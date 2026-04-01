@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <title>Taoyuan Cesium Canvas Heatmap + GeoJSON 點位</title>
+
+  <!-- 避免 favicon 404 -->
+  <link rel="icon" href="data:," />
+
+  <!-- Cesium 樣式 -->
+  <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/cesium@1.114/Build/Cesium/Widgets/widgets.css"/>
+
+  <style>
+    html, body, #cesiumContainer {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+    }
+
+    body {
+      background: #000;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+                   sans-serif;
+    }
+
+    /* 右上角：Heatmap 控制面板 */
+    #heatmapPanel {
+      position: fixed;
+      top: 12px;
+      right: 12px;
+      z-index: 40;
+      width: 260px;
+      max-width: 70vw;
+      padding: 10px 12px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.15);
+      background: rgba(15,23,42,0.8);
+      backdrop-filter: blur(12px);
+      box-shadow: 0 18px 40px rgba(0,0,0,0.55);
+      color: #f9fafb;
+      font-size: 12px;
+    }
+    .hp-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+    .hp-header-left {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+    }
+    .hp-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: #34d399;
+    }
+    .hp-subtitle {
+      font-size: 10px;
+      color: #cbd5f5;
+      opacity: 0.85;
+    }
+    #btn-toggle-heatmap {
+      width: 100%;
+      margin: 4px 0 6px 0;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: none;
+      background: rgba(236,72,153,0.95);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      box-shadow: 0 10px 25px rgba(236,72,153,0.45);
+      transition: background 0.15s ease, transform 0.15s ease,
+                  box-shadow 0.15s ease;
+    }
+    #btn-toggle-heatmap:hover {
+      background: rgba(244,114,182,0.95);
+      transform: translateY(-1px);
+      box-shadow: 0 16px 35px rgba(236,72,153,0.55);
+    }
+    .hp-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 2px;
+      color: #e5e7eb;
+    }
+    #alphaLabel {
+      font-variant-numeric: tabular-nums;
+      font-size: 11px;
+      color: #cbd5f5;
+    }
+    #alphaSlider {
+      width: 100%;
+      cursor: pointer;
+    }
+
+    /* Legend + 開關（GeoJSON 點位） */
+    .hp-row-legend {
+      margin-top: 8px;
+      padding-top: 6px;
+      border-top: 1px dashed rgba(148,163,184,0.55);
+    }
+    .legend-left {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: #f97373;
+      box-shadow: 0 0 0 2px rgba(248,113,113,0.5);
+    }
+    .legend-label {
+      font-size: 11px;
+      color: #e5e7eb;
+    }
+
+    /* 小開關 toggle */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 32px;
+      height: 18px;
+    }
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .slider-toggle {
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background-color: #4b5563;
+      border-radius: 999px;
+      transition: 0.15s;
+    }
+    .slider-toggle:before {
+      content: "";
+      position: absolute;
+      height: 14px;
+      width: 14px;
+      left: 2px;
+      top: 2px;
+      background-color: white;
+      border-radius: 50%;
+      transition: 0.15s;
+    }
+    .switch input:checked + .slider-toggle {
+      background-color: #22c55e;
+    }
+    .switch input:checked + .slider-toggle:before {
+      transform: translateX(14px);
+    }
+
+    /* 左下角：圓形地球 FAB（底圖選單） */
+    #basemapFab {
+      position: fixed;
+      left: 18px;
+      bottom: 18px;
+      z-index: 50;
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.25);
+      background: radial-gradient(circle at 30% 20%, #38bdf8 0, #0f172a 55%);
+      color: #e0f2fe;
+      font-size: 26px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 18px 40px rgba(15,23,42,0.9);
+      backdrop-filter: blur(10px);
+      transition: transform 0.15s ease, box-shadow 0.15s ease,
+                  border-color 0.15s ease, background 0.15s ease;
+    }
+    #basemapFab:hover {
+      transform: translateY(-2px) scale(1.03);
+      box-shadow: 0 22px 50px rgba(15,23,42,0.95);
+      border-color: rgba(56,189,248,0.7);
+      background: radial-gradient(circle at 30% 20%, #7dd3fc 0, #020617 60%);
+    }
+
+    /* 左側滑出式底圖 Drawer */
+    #basemapDrawer {
+      position: fixed;
+      inset: 0 auto 0 0;
+      height: 100%;
+      width: 240px;
+      max-width: 75vw;
+      background: rgba(2,6,23,0.95);
+      border-right: 1px solid rgba(148,163,184,0.35);
+      backdrop-filter: blur(16px);
+      z-index: 40;
+      transform: translateX(-100%);
+      transition: transform 0.25s ease-in-out;
+      display: flex;
+      flex-direction: column;
+    }
+    #basemapDrawer.open {
+      transform: translateX(0);
+    }
+    .bd-header {
+      padding: 12px 14px 6px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .bd-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .bd-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 999px;
+      background: rgba(56,189,248,0.85);
+      color: #0f172a;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .bd-title-text {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      font-size: 11px;
+    }
+    .bd-title-main {
+      color: #f9fafb;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+    }
+    .bd-title-sub {
+      color: #9ca3af;
+      font-size: 10px;
+    }
+    #drawerClose {
+      width: 26px;
+      height: 26px;
+      border-radius: 999px;
+      border: 1px solid rgba(148,163,184,0.6);
+      background: rgba(15,23,42,0.9);
+      color: #e5e7eb;
+      font-size: 13px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+    #drawerClose:hover {
+      background: rgba(30,64,175,0.95);
+      color: #fff;
+    }
+    .bd-body {
+      padding: 6px 10px 10px 10px;
+      flex: 1;
+      overflow-y: auto;
+      font-size: 12px;
+    }
+    .bd-info {
+      padding: 0 14px 10px 14px;
+      font-size: 10px;
+      color: #6b7280;
+    }
+    .bm-button {
+      width: 100%;
+      margin-bottom: 6px;
+      padding: 7px 10px;
+      border-radius: 12px;
+      border: none;
+      text-align: left;
+      cursor: pointer;
+      background: rgba(15,23,42,0.88);
+      color: #e5e7eb;
+      transition: background 0.15s ease, transform 0.1s ease,
+                  box-shadow 0.15s ease;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.55);
+    }
+    .bm-button span { display:block; }
+    .bm-title { font-size: 12px; font-weight: 500; margin-bottom: 1px; }
+    .bm-sub { font-size: 11px; color: #9ca3af; }
+    .bm-button.primary {
+      background: rgba(56,189,248,0.85);
+      color: #0f172a;
+      box-shadow: 0 12px 25px rgba(56,189,248,0.65);
+    }
+    .bm-button:hover {
+      transform: translateY(-1px);
+      background: rgba(30,64,175,0.95);
+    }
+    .bm-button.primary:hover {
+      background: rgba(56,189,248,1);
+    }
+
+    /* 右下角：地圖控制 Dock（放大 / 縮小 / 朝北） */
+    #mapControls {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      z-index: 50;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 8px;
+      border-radius: 16px;
+      background: rgba(15,23,42,0.88);
+      border: 1px solid rgba(148,163,184,0.5);
+      box-shadow: 0 16px 40px rgba(0,0,0,0.75);
+      backdrop-filter: blur(12px);
+    }
+    .ctrl-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 999px;
+      border: 1px solid rgba(148,163,184,0.8);
+      background: radial-gradient(circle at 30% 20%, #1f2937 0, #020617 75%);
+      color: #e5e7eb;
+      font-size: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: transform 0.12s ease, box-shadow 0.12s ease,
+                  background 0.12s ease, border-color 0.12s ease;
+    }
+    .ctrl-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 12px 30px rgba(0,0,0,0.9);
+      background: radial-gradient(circle at 30% 20%, #374151 0, #020617 75%);
+      border-color: rgba(248,250,252,0.9);
+    }
+    #btn-north {
+      background: radial-gradient(circle at 30% 20%, #fbbf24 0, #92400e 70%);
+      color: #fffbea;
+    }
+    #btn-north:hover {
+      background: radial-gradient(circle at 30% 20%, #fde68a 0, #78350f 70%);
+    }
+
+    @media (max-width: 768px) {
+      #heatmapPanel {
+        top: 10px;
+        right: 8px;
+        width: 220px;
+        font-size: 11px;
+      }
+      #basemapFab {
+        width: 52px;
+        height: 52px;
+        left: 14px;
+        bottom: 14px;
+        font-size: 24px;
+      }
+      #mapControls {
+        right: 10px;
+        bottom: 10px;
+        padding: 6px;
+      }
+      .ctrl-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 18px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div id="cesiumContainer"></div>
+
+<!-- 右上角：Heatmap 控制面板 -->
+<div id="heatmapPanel">
+  <div class="hp-header">
+    <div class="hp-header-left">
+      <span class="hp-dot"></span>
+      <span>熱區圖</span>
+    </div>
+    <div class="hp-subtitle">Canvas Overlay</div>
+  </div>
+
+  <button id="btn-toggle-heatmap">
+    <span>隱藏 熱區圖</span>
+  </button>
+
+  <div class="hp-row">
+    <span>透明度</span>
+    <span id="alphaLabel">1.00</span>
+  </div>
+  <input id="alphaSlider" type="range" min="0" max="1" step="0.05" value="1">
+
+  <!-- GeoJSON 點位圖例 + 開關 -->
+  <div class="hp-row hp-row-legend">
+    <div class="legend-left">
+      <span class="legend-dot"></span>
+      <span class="legend-label">GeoJSON 點位</span>
+    </div>
+    <label class="switch">
+      <input type="checkbox" id="chkPoints" checked />
+      <span class="slider-toggle"></span>
+    </label>
+  </div>
+</div>
+
+<!-- 左下角：圓形地球 FAB（底圖選單） -->
+<button id="basemapFab" title="切換底圖">🌍</button>
+
+<!-- 右下角：地圖控制 Dock -->
+<div id="mapControls">
+  <button id="btn-zoom-in"  class="ctrl-btn" title="放大">＋</button>
+  <button id="btn-zoom-out" class="ctrl-btn" title="縮小">－</button>
+  <button id="btn-north"    class="ctrl-btn" title="地圖朝北">🧭</button>
+</div>
+
+<!-- 左側滑出式底圖 Drawer -->
+<div id="basemapDrawer">
+  <div class="bd-header">
+    <div class="bd-title-wrap">
+      <div class="bd-icon">🌐</div>
+      <div class="bd-title-text">
+        <span class="bd-title-main">底圖切換</span>
+        <span class="bd-title-sub">NLSC / OSM / Ion</span>
+      </div>
+    </div>
+    <button id="drawerClose" title="關閉">✕</button>
+  </div>
+
+  <div class="bd-body">
+    <button id="btn-nlsc" class="bm-button primary">
+      <span class="bm-title">NLSC 通用電子地圖</span>
+      <span class="bm-sub">預設底圖，街道/地標</span>
+    </button>
+    <button id="btn-nlsc-photo" class="bm-button">
+      <span class="bm-title">NLSC 航照影像</span>
+      <span class="bm-sub">正射影像 PHOTO2</span>
+    </button>
+    <button id="btn-osm" class="bm-button">
+      <span class="bm-title">OpenStreetMap</span>
+      <span class="bm-sub">OSM 標準瓦片</span>
+    </button>
+    <button id="btn-ion" class="bm-button">
+      <span class="bm-title">Cesium World Imagery</span>
+      <span class="bm-sub">Cesium Ion 影像底圖</span>
+    </button>
+  </div>
+
+  <div class="bd-info">
+    Tip：手機上也可以用左下角 🌍 按鈕開啟 / 關閉選單。
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/cesium@1.114/Build/Cesium/Cesium.js"></script>
+
+<script>
+// ========================
+// 1. Cesium 初始化 + Token
+// ========================
+Cesium.Ion.defaultAccessToken =
+"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI3YTIxMzZmYy0yMDQwLTRjYTAtOTUxZi1iNTIzM2JiNWU4NGMiLCJpZCI6MzI5Mjk4LCJpYXQiOjE3NjQ0Njg4MjZ9.Tk4-GEYgmFEWekgU05vVj5JL2YePz1k9skgxvH1mbek";
+
+const viewer = new Cesium.Viewer("cesiumContainer", {
+  timeline: false,
+  animation: false,
+  baseLayerPicker: false
+});
+viewer.imageryLayers.removeAll();
+
+// ========================
+// 2. 底圖 providers
+// ========================
+function createNLSCProvider(layerName) {
+  return new Cesium.WebMapTileServiceImageryProvider({
+    url: "https://wmts.nlsc.gov.tw/wmts",
+    layer: layerName,
+    style: "default",
+    format: "image/png",
+    tileMatrixSetID: "GoogleMapsCompatible",
+    maximumLevel: 19,
+    credit: "國土測繪中心"
+  });
+}
+
+const providers = {
+  osm: new Cesium.OpenStreetMapImageryProvider({ url: "https://tile.openstreetmap.org/" }),
+  nlsc: createNLSCProvider("EMAP"),
+  nlsc_photo: createNLSCProvider("PHOTO2")
+};
+
+let basemapLayer = null;
+let heatmapLayer = null;
+let pointDataSource = null;
+
+let heatmapPoints = [];
+let cityBounds = null;
+let rectangle = null;
+
+// 先顯示底圖
+async function setBasemap(type) {
+  if (basemapLayer) {
+    viewer.imageryLayers.remove(basemapLayer, false);
+    basemapLayer = null;
+  }
+
+  if (type === "ion") {
+    try {
+      const provider = await Cesium.IonImageryProvider.fromAssetId(2);
+      basemapLayer = viewer.imageryLayers.addImageryProvider(provider);
+    } catch (e) {
+      console.error("載入 Ion 失敗：", e);
+      return;
+    }
+  } else {
+    const provider = providers[type];
+    if (!provider) {
+      console.error("未知底圖類型：", type);
+      return;
+    }
+    basemapLayer = viewer.imageryLayers.addImageryProvider(provider);
+  }
+
+  if (heatmapLayer) viewer.imageryLayers.raiseToTop(heatmapLayer);
+}
+setBasemap("nlsc");
+
+// ========================
+// 3. GeoJSON → 點位 + Heatmap
+// ========================
+function computeBounds(points) {
+  const lons = points.map(p => p.lon);
+  const lats = points.map(p => p.lat);
+  let minLon = Math.min(...lons);
+  let maxLon = Math.max(...lons);
+  let minLat = Math.min(...lats);
+  let maxLat = Math.max(...lats);
+
+  const lonPad = (maxLon - minLon || 0.01) * 0.15;
+  const latPad = (maxLat - minLat || 0.01) * 0.15;
+
+  return {
+    minLon: minLon - lonPad,
+    maxLon: maxLon + lonPad,
+    minLat: minLat - latPad,
+    maxLat: maxLat + latPad
+  };
+}
+
+// Canvas Heatmap
+function createHeatmapImage(width, height, points) {
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+
+  ctx.clearRect(0, 0, width, height);
+  ctx.globalCompositeOperation = "lighter";
+
+  const radius = 25;
+
+  function lonLatToXY(lon, lat) {
+    const x = ((lon - cityBounds.minLon) /
+               (cityBounds.maxLon - cityBounds.minLon)) * width;
+    const y = ((cityBounds.maxLat - lat) /
+               (cityBounds.maxLat - cityBounds.minLat)) * height;
+    return { x, y };
+  }
+
+  for (const p of points) {
+    const { x, y } = lonLatToXY(p.lon, p.lat);
+
+    const grd = ctx.createRadialGradient(x, y, 0, x, y, radius);
+    grd.addColorStop(0.0, "rgba(248,250,252,0.95)");
+    grd.addColorStop(0.3, "rgba(56,189,248,0.9)");
+    grd.addColorStop(0.6, "rgba(59,130,246,0.70)");
+    grd.addColorStop(1.0, "rgba(30,64,175,0.0)");
+    ctx.fillStyle = grd;
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  return canvas.toDataURL("image/png");
+}
+
+// 載入 GeoJSON（注意：路徑為根目錄 /TY_case84.geojson）
+fetch("/TY_case84.geojson")
+  .then(res => {
+    if (!res.ok) {
+      throw new Error("載入 TY_case84.geojson 失敗：HTTP " + res.status);
+    }
+    return res.json();
+  })
+  .then(geojson => {
+    heatmapPoints = geojson.features
+      .filter(f => f.geometry && f.geometry.type === "Point")
+      .map(f => {
+        const [lon, lat] = f.geometry.coordinates;
+        return {
+          lon,
+          lat,
+          value: 40 + Math.random() * 60   // TODO：之後可改用屬性當權重
+        };
+      });
+
+    if (!heatmapPoints.length) {
+      console.warn("GeoJSON 中沒有 Point 幾何。");
+      return;
+    }
+
+    // 計算範圍
+    cityBounds = computeBounds(heatmapPoints);
+    rectangle = Cesium.Rectangle.fromDegrees(
+      cityBounds.minLon,
+      cityBounds.minLat,
+      cityBounds.maxLon,
+      cityBounds.maxLat
+    );
+
+    // 產生 Heatmap
+    const heatmapUrl = createHeatmapImage(1024, 1024, heatmapPoints);
+    heatmapLayer = viewer.imageryLayers.addImageryProvider(
+      new Cesium.SingleTileImageryProvider({
+        url: heatmapUrl,
+        rectangle: rectangle
+      })
+    );
+    heatmapLayer.alpha = baseAlpha;
+
+    // 建立 GeoJSON 點位圖層（小紅點）
+    pointDataSource = new Cesium.CustomDataSource("geojson-points");
+    heatmapPoints.forEach(p => {
+      pointDataSource.entities.add({
+        position: Cesium.Cartesian3.fromDegrees(p.lon, p.lat),
+        point: {
+          pixelSize: 6,
+          color: Cesium.Color.RED,
+          outlineColor: Cesium.Color.WHITE,
+          outlineWidth: 1,
+          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND
+        }
+      });
+    });
+    pointDataSource.show = pointsVisible;
+    viewer.dataSources.add(pointDataSource);
+
+    // 飛到資料範圍
+    viewer.camera.flyTo({ destination: rectangle, duration: 1.5 });
+  })
+  .catch(err => {
+    console.error(err);
+    alert("載入 TY_case84.geojson 失敗，請檢查檔案路徑與 Web 伺服器設定。");
+  });
+
+// ========================
+// 4. 熱區控制 UI + 呼吸 & 比例尺控制
+// ========================
+let baseAlpha = 1.0;
+let heatmapVisible = true;
+let pointsVisible  = true;
+
+const alphaSlider = document.getElementById("alphaSlider");
+const alphaLabel  = document.getElementById("alphaLabel");
+const toggleBtn   = document.getElementById("btn-toggle-heatmap");
+const chkPoints   = document.getElementById("chkPoints");
+
+alphaSlider.addEventListener("input", () => {
+  const v = Number(alphaSlider.value);
+  baseAlpha = v;
+  alphaLabel.textContent = v.toFixed(2);
+});
+
+toggleBtn.addEventListener("click", () => {
+  heatmapVisible = !heatmapVisible;
+  if (heatmapLayer) heatmapLayer.show = heatmapVisible;
+  toggleBtn.textContent = heatmapVisible ? "隱藏 熱區圖" : "顯示 熱區圖";
+});
+
+// GeoJSON 點位開關
+chkPoints.addEventListener("change", () => {
+  pointsVisible = chkPoints.checked;
+  if (pointDataSource) {
+    pointDataSource.show = pointsVisible;
+  }
+});
+
+// 根據相機高度控制顯示強度（2km~25km 之間漸淡）
+function getZoomFactor(heightMeters) {
+  const minH = 2000;
+  const maxH = 25000;
+  if (heightMeters <= minH) return 1.0;
+  if (heightMeters >= maxH) return 0.0;
+  const t = (heightMeters - minH) / (maxH - minH);
+  return 1.0 - t;
+}
+
+// 利用 clock.onTick 做「呼吸 + 比例尺」控制 alpha
+viewer.clock.onTick.addEventListener(function() {
+  if (!heatmapLayer) return;
+
+  const carto = Cesium.Cartographic.fromCartesian(viewer.camera.position);
+  const height = carto.height;
+  const zoomFactor = getZoomFactor(height);
+
+  const t = performance.now() * 0.002;         // 呼吸速度
+  const breath = 0.6 + 0.4 * Math.sin(t);      // 0.6 ~ 1.0
+
+  const finalAlpha = baseAlpha * zoomFactor * breath;
+
+  if (finalAlpha <= 0.02 || !heatmapVisible) {
+    heatmapLayer.show = false;
+  } else {
+    heatmapLayer.show = true;
+    heatmapLayer.alpha = finalAlpha;
+  }
+});
+
+// ========================
+// 5. Drawer 開關 + 底圖按鈕
+// ========================
+const drawer      = document.getElementById("basemapDrawer");
+const fab         = document.getElementById("basemapFab");
+const drawerClose = document.getElementById("drawerClose");
+
+let drawerOpen = false;
+function setDrawer(open) {
+  drawerOpen = open;
+  if (open) drawer.classList.add("open");
+  else      drawer.classList.remove("open");
+}
+
+fab.addEventListener("click", () => setDrawer(!drawerOpen));
+drawerClose.addEventListener("click", () => setDrawer(false));
+
+function bindBasemapButton(id, type) {
+  document.getElementById(id).addEventListener("click", () => {
+    setBasemap(type);
+    if (window.innerWidth < 768) setDrawer(false);
+  });
+}
+
+bindBasemapButton("btn-nlsc", "nlsc");
+bindBasemapButton("btn-nlsc-photo", "nlsc_photo");
+bindBasemapButton("btn-osm", "osm");
+bindBasemapButton("btn-ion", "ion");
+
+// ========================
+// 6. 右下角控制 Dock：放大 / 縮小 / 朝北
+// ========================
+const btnZoomIn  = document.getElementById("btn-zoom-in");
+const btnZoomOut = document.getElementById("btn-zoom-out");
+const btnNorth   = document.getElementById("btn-north");
+
+function zoomBy(factor) {
+  const camera = viewer.camera;
+  const carto  = Cesium.Cartographic.fromCartesian(camera.position);
+  const height = carto.height;
+  const amount = height * 0.3; // 一次縮放 30% 高度
+
+  if (factor > 0) camera.zoomIn(amount);
+  else            camera.zoomOut(amount);
+}
+
+btnZoomIn.addEventListener("click", () => zoomBy(+1));
+btnZoomOut.addEventListener("click", () => zoomBy(-1));
+
+btnNorth.addEventListener("click", () => {
+  const camera = viewer.camera;
+  const pos    = Cesium.Cartographic.fromCartesian(camera.position);
+
+  const pitch  = camera.pitch;
+  const height = pos.height;
+  const heading = 0.0;  // 正北
+
+  viewer.camera.flyTo({
+    destination: Cesium.Cartesian3.fromRadians(
+      pos.longitude,
+      pos.latitude,
+      height
+    ),
+    orientation: {
+      heading: heading,
+      pitch:   pitch,
+      roll:    0.0
+    },
+    duration: 0.6
+  });
+});
+</script>
+
+</body>
+</html>
