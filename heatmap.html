@@ -610,8 +610,8 @@ function createHeatmapImage(width, height, points) {
   return canvas.toDataURL("image/png");
 }
 
-// 載入 GeoJSON（注意：路徑為根目錄 /TY_case84.geojson）
-fetch("https://ariverchen0911.github.io/PocCase/TY_case84.json")
+// 若檔名是 .geojson
+fetch("https://ariverchen0911.github.io/PocCase/TY_case84.geojson")
   .then(res => {
     if (!res.ok) {
       throw new Error("載入 TY_case84.geojson 失敗：HTTP " + res.status);
