@@ -3,18 +3,25 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>UR-11502 徵求說明書工項心智圖</title>
+  <title>UR-11502 徵求說明書互動式工項心智圖</title>
   <style>
     :root {
       color-scheme: light;
       --ink: #17202a;
       --muted: #5d6976;
-      --line: #d9e0e7;
-      --paper: #f6f8fb;
+      --line: #d8e0e8;
+      --paper: #f4f7fb;
       --panel: #ffffff;
       --accent: #0b6b75;
-      --accent-2: #9b4d28;
+      --accent-soft: #e7f4f5;
+      --warn: #9b4d28;
+      --warn-soft: #fff1e8;
+      --green: #477244;
+      --green-soft: #edf6ec;
+      --violet: #6d568f;
+      --violet-soft: #f0edf7;
       --focus: #2b7fff;
+      --shadow: 0 10px 24px rgba(21, 32, 43, 0.08);
     }
 
     * {
@@ -35,18 +42,18 @@
     }
 
     .topbar {
-      max-width: 1280px;
+      max-width: 1360px;
       margin: 0 auto;
       padding: 16px 20px;
       display: grid;
-      gap: 10px;
+      gap: 12px;
       grid-template-columns: 1fr auto;
       align-items: center;
     }
 
     h1 {
       margin: 0;
-      font-size: clamp(1.25rem, 1.8vw, 1.8rem);
+      font-size: clamp(1.25rem, 1.8vw, 1.85rem);
       line-height: 1.25;
     }
 
@@ -54,7 +61,7 @@
       margin: 5px 0 0;
       color: var(--muted);
       font-size: 0.94rem;
-      line-height: 1.5;
+      line-height: 1.55;
     }
 
     .actions {
@@ -68,6 +75,7 @@
     a.button {
       min-height: 36px;
       border: 1px solid var(--line);
+      border-radius: 6px;
       background: var(--panel);
       color: var(--ink);
       padding: 7px 11px;
@@ -84,33 +92,191 @@
     }
 
     button:focus-visible,
-    a.button:focus-visible {
+    a.button:focus-visible,
+    input:focus-visible {
       outline: 3px solid color-mix(in srgb, var(--focus) 35%, transparent);
       outline-offset: 2px;
     }
 
     main {
-      max-width: 1280px;
+      max-width: 1360px;
       margin: 0 auto;
       padding: 16px 20px 28px;
     }
 
-    .viewer {
-      min-height: 70vh;
+    .toolbar {
+      display: grid;
+      grid-template-columns: minmax(220px, 380px) 1fr;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .search {
+      width: 100%;
+      min-height: 38px;
       border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--panel);
+      color: var(--ink);
+      padding: 8px 10px;
+      font: inherit;
+      font-size: 0.95rem;
+    }
+
+    .status {
+      color: var(--muted);
+      font-size: 0.92rem;
+      line-height: 1.5;
+    }
+
+    .viewer {
+      min-height: 72vh;
+      border: 1px solid var(--line);
+      border-radius: 8px;
       background: var(--panel);
       overflow: auto;
+      box-shadow: var(--shadow);
     }
 
     .canvas {
       transform-origin: 0 0;
       width: max-content;
       min-width: 100%;
-      padding: 24px;
+      padding: 26px 30px 34px;
+      transition: transform 0.15s ease;
     }
 
-    .mermaid {
-      min-width: 980px;
+    .mindmap {
+      min-width: 1080px;
+    }
+
+    .node-row {
+      display: grid;
+      grid-template-columns: max-content 1fr;
+      gap: 14px;
+      align-items: start;
+      position: relative;
+      margin: 12px 0;
+    }
+
+    .node-row::before {
+      content: "";
+      position: absolute;
+      top: 18px;
+      left: -18px;
+      width: 18px;
+      height: 1px;
+      background: var(--line);
+    }
+
+    .mindmap > .node-row::before {
+      display: none;
+    }
+
+    .node {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      max-width: 360px;
+      min-height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--ink);
+      padding: 8px 11px;
+      box-shadow: 0 2px 8px rgba(21, 32, 43, 0.05);
+      white-space: normal;
+      text-align: left;
+      line-height: 1.35;
+    }
+
+    .node[data-depth="0"] {
+      max-width: 420px;
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #ffffff;
+      font-weight: 700;
+    }
+
+    .node[data-depth="1"] {
+      background: var(--accent-soft);
+      border-color: color-mix(in srgb, var(--accent) 42%, var(--line));
+      font-weight: 700;
+    }
+
+    .node[data-depth="2"] {
+      background: var(--warn-soft);
+      border-color: color-mix(in srgb, var(--warn) 38%, var(--line));
+    }
+
+    .node[data-depth="3"] {
+      background: var(--green-soft);
+      border-color: color-mix(in srgb, var(--green) 35%, var(--line));
+    }
+
+    .node[data-depth="4"],
+    .node[data-depth="5"] {
+      background: var(--violet-soft);
+      border-color: color-mix(in srgb, var(--violet) 30%, var(--line));
+    }
+
+    .node.leaf {
+      cursor: default;
+    }
+
+    .node.highlight {
+      border-color: var(--focus);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 20%, transparent);
+    }
+
+    .toggle {
+      display: grid;
+      place-items: center;
+      flex: 0 0 20px;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.78);
+      color: var(--accent);
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+
+    .node[data-depth="0"] .toggle {
+      color: var(--accent);
+    }
+
+    .node.leaf .toggle {
+      color: var(--muted);
+      background: transparent;
+    }
+
+    .label {
+      overflow-wrap: anywhere;
+    }
+
+    .children {
+      display: grid;
+      grid-template-columns: repeat(var(--columns, 1), max-content);
+      gap: 10px 20px;
+      align-items: start;
+      position: relative;
+      padding-left: 20px;
+    }
+
+    .children::before {
+      content: "";
+      position: absolute;
+      top: 18px;
+      bottom: 18px;
+      left: 0;
+      width: 1px;
+      background: var(--line);
+    }
+
+    .node-row.collapsed > .children {
+      display: none;
     }
 
     .summary {
@@ -122,6 +288,7 @@
 
     .summary section {
       border: 1px solid var(--line);
+      border-radius: 8px;
       background: var(--panel);
       padding: 12px;
     }
@@ -149,8 +316,9 @@
       padding-left: 1.2rem;
     }
 
-    @media (max-width: 920px) {
-      .topbar {
+    @media (max-width: 960px) {
+      .topbar,
+      .toolbar {
         grid-template-columns: 1fr;
       }
 
@@ -170,12 +338,12 @@
         padding-right: 12px;
       }
 
-      .viewer {
-        min-height: 68vh;
+      .canvas {
+        padding: 16px;
       }
 
-      .canvas {
-        padding: 14px;
+      .mindmap {
+        min-width: 920px;
       }
 
       .summary {
@@ -188,210 +356,37 @@
   <header>
     <div class="topbar">
       <div>
-        <h1>UR-11502 徵求說明書工項心智圖</h1>
-        <p class="meta">依 `03-UR-11502-徵求說明書.pdf` 第 5 章第 1-2 節整理，補充契約付款節點。</p>
+        <h1>UR-11502 徵求說明書互動式工項心智圖</h1>
+        <p class="meta">點擊有箭頭的節點可展開或收合分支。依 `03-UR-11502-徵求說明書.pdf` 第 5 章整理，補充契約付款節點。</p>
       </div>
       <nav class="actions" aria-label="心智圖操作">
+        <button type="button" id="expandAll" title="展開全部分支">展開全部</button>
+        <button type="button" id="collapseAll" title="收合到主要工項">收合分支</button>
         <button type="button" id="zoomOut" title="縮小心智圖">縮小</button>
         <button type="button" id="resetZoom" title="重設縮放">重設</button>
         <button type="button" id="zoomIn" title="放大心智圖">放大</button>
-        <button type="button" id="downloadSvg" title="下載目前心智圖 SVG">下載 SVG</button>
+        <button type="button" id="downloadJson" title="下載心智圖資料 JSON">下載 JSON</button>
         <a class="button" href="UR-11502_徵求說明書_工項心智圖.md" title="開啟 Markdown 原始整理">Markdown</a>
       </nav>
     </div>
   </header>
 
   <main>
-    <div class="viewer" aria-label="Mermaid 心智圖檢視區">
+    <div class="toolbar">
+      <input class="search" id="search" type="search" placeholder="搜尋工項、系統或交付物" aria-label="搜尋心智圖節點">
+      <div class="status" id="status">預設展開主要工項；點擊節點可逐層查看細節。</div>
+    </div>
+
+    <div class="viewer" aria-label="互動式心智圖檢視區">
       <div class="canvas" id="canvas">
-        <pre class="mermaid">
-mindmap
-  root((UR-11502 國土規劃相關資訊系統維運與擴充))
-    1 維運國土規劃相關資訊系統
-      1-1 國土規劃入口網
-        期初設定帳號與權限
-        整合國土計畫組相關系統
-          書圖上傳平台
-          審議比對圖台
-          使用地查詢系統
-          隨時調整案件出圖系統
-          全文檢索與管考系統
-          原住民族土地調查平台
-          土地使用管制與違規查報系統
-        整合城鄉發展分署相關系統
-          圖資查詢及流通供應平台
-          國土規劃地理資訊圖台
-          都市計畫圖資上傳平台
-          全國土地使用分區資料查詢系統
-          公版都市計畫證明核發系統
-          都計雲
-        期末配合入口網更新與美編設計
-      1-2 資料整合串聯與介接方案
-        盤點工項1-1及其他外部系統
-        依業務性質分類
-          規劃類
-          審議類
-          管制類
-          其他適當分類
-        提出系統整併與資料庫整合構想
-        提出介接處理方式與示意圖
-        評估系統整併可能性
-      1-3 城鄉發展分署系統維運
-        網頁活動訊息與下載檔維護
-        定期維護更新相關圖資
-        圖資查詢及流通供應平台
-          匯入圖資分類成果
-          洽機關提供或申請圖資介接服務
-          一站式查詢與下載
-          公務與民間圖資權限
-          最新版圖資自動提供機制
-          圖資收費功能與收費機制
-        國土規劃地理資訊圖台
-          更新介面與右鍵屬性查詢
-          介接3D圖資服務與建物人口資料
-          API與WMTS供外界介接
-          使用次數與網路使用量統計
-          歷年圖資時間軸
-          AI語意定位含語音
-          使用率分析與模組簡化評估
-          ArcGIS Server 12以上結合AI與LLM測試
-          介接外部API與WMTS資料
-        都市計畫圖資上傳事項
-          每2個月產製未上傳案件清冊
-          期末研擬逾期180天案件解方
-          辦理縣市政府圖資檔案介接
-          評估低使用資料是否刪除
-          提送修正後作業手冊初稿
-    2 維運國土計畫組相關資訊系統
-      期初確認子系統與功能整合
-      辦理維運或修正前先召開工作會議確認需求
-      2-1 書圖上傳平台
-        協助縣市政府上傳法定書件
-        列明無法上傳理由與建議處理
-        維運上傳與檢核作業
-        修正上傳作業手冊
-        介接審議比對圖台與查詢系統
-        介接通知書列印與出圖系統
-        檢查使用地土地清冊空值與格式
-        研議國土計畫與鄉村地區法定書件上傳介面
-      2-2 國土功能分區圖審議比對圖台
-        提供功能諮詢與調整建議
-        整合圖資查詢平台同步更新圖資
-        新增檢核成果納入功能
-        新增修正狀態判定功能
-        新增參考圖資上傳功能
-        分析鄉村地區規劃與階段性劃設差異
-        修正樣態4零星土地功能
-        更新樣態7劃設疑義詞庫
-        單一比對整合多邊形選取編輯說明
-        評估開放縣市政府與受託團隊使用
-      2-3 國土功能分區及使用地查詢系統
-        更新容許使用項目
-        與國土規劃相關資訊系統串接
-        以圖台呈現計畫與分區歷程
-        補充容許使用及申請同意或使用許可資訊
-      2-4 國土功能分區通知書列印系統
-        系統管理維護營運與資安防護
-        系統及資料庫備份還原
-        新增案件列表檢視模式
-        整合核判案件處理流程
-        維運地籍圖檢視圖台
-        編修使用手冊與名詞解釋
-        建立定期追蹤機制
-        整合地籍圖資轉檔程式
-          地段清單匯入與勾稽
-          統計報告與電子郵件通知
-          異動地號清單匯入
-          土地異動前後關係屬性
-          每日每週資料更新至土地資料庫
-          核判結果API回傳更新土地資料庫
-      2-5 隨時調整案件出圖系統
-        納入最新版功能分區及分類參考圖資
-        產製法定書圖格式電子檔
-        產製調整前後差異統計圖表
-        介接通知書列印系統同步更新核判結果
-      2-6 國土計畫相關事項管考系統
-        納入國土計畫應辦事項
-        納入審議會決議事項
-        納入補助案件與辦理情形填報
-        整合鄉村地區整體規劃圖層與進度管考
-        介接國土計畫主題網站作為資料庫
-    3 教育訓練與系統教學手冊
-      研擬訓練構想與期程
-      拍攝教學影片或建立FAQ
-      訓練後依學員回饋修正系統
-      本署同仁至少1場再加1場
-      地方政府北中南東至少4場再加4場
-      地政事務所與區公所至少10場再加10場
-      南投縣與嘉義縣各1場公版證明核發系統訓練
-      至少3場地理資訊圖台與全國土地使用分區系統訓練
-    4 使用者回饋機制與無障礙標章
-      期初建立各系統使用者回饋機制
-      回饋資訊列入月工作報告
-      提出改善建議
-      期末完成國土規劃入口網無障礙標章申請
-    5 工作會議與技術支援
-      每月提供工作會議議程資料
-      配合整理會議紀錄
-      回應與追蹤處理情形
-      協助國土管理署與城鄉發展分署技術諮詢支援
-    6 資訊安全事項
-      依第3章第6節辦理資安需求
-      簽約次日起60天內繳交
-        資通系統防護基準表
-        資通安全項目自評表
-        資通安全維護計畫
-      ArcGIS Server漏洞情資蒐集與修補
-      弱點掃描與滲透測試
-      HTTPS與SSL TLS憑證管理
-      日誌保存與異常通報
-      備份與資料回復測試演練
-      資安事件應處與修復
-    7 報告書印製與電子檔
-      依第5章第2節繳交成果
-      期初成果
-        115年9月30日
-        書面成果報告15份
-        電子檔含成果簡報1份
-      期中成果
-        115年12月31日
-        書面成果報告15份
-        電子檔含成果簡報1份
-      期末成果
-        116年3月31日
-        書面成果報告15份
-        電子檔含成果簡報1份
-      總結報告書
-        期末審查通過發文日次日起14日曆天內
-        系統需求規格書
-        系統分析書
-        系統設計規格書
-        程式碼
-        書面成果報告15份
-        電子檔3份
-    8 營運推廣配合辦理事項
-      期末辦理連江縣與新竹縣公版系統推廣說明會
-      配合國家底圖分組推廣說明會
-      簡介國土規劃相關資訊系統功能
-      確保GSN東七機房與國網中心系統正常運作
-      負責東七機房租借與維運費用
-      配合地理資訊研討會展覽與成果發表
-      期初規劃移機至國網中心與東七備援機房
-      維持ArcGIS Server防毒與維運軟體訂閱
-    契約補充
-      履約標的依徵求說明書第5章與履約期限辦理
-      分3期付款
-        期初審查核定後40%
-        期中審查核定後30%
-        期末驗收合格後30%
-        </pre>
+        <div class="mindmap" id="mindmap"></div>
       </div>
     </div>
 
     <div class="summary" aria-label="工項摘要">
       <section>
         <h2>主軸</h2>
-        <p>本案核心是多系統維運、資料整合、圖資流通與國土功能分區制度轉軌支援。</p>
+        <p>多系統維運、資料整合、圖資流通與國土功能分區制度轉軌支援。</p>
       </section>
       <section>
         <h2>高工作量</h2>
@@ -403,7 +398,7 @@ mindmap
       </section>
       <section>
         <h2>資安交付</h2>
-        <p>60 天內須交付防護基準表、自評表、資安維護計畫，並納入 ArcGIS Server 漏洞修補。</p>
+        <p>60 天內交付防護基準表、自評表、資安維護計畫，並納入 ArcGIS Server 漏洞修補。</p>
       </section>
       <section>
         <h2>里程碑</h2>
@@ -412,51 +407,194 @@ mindmap
     </div>
   </main>
 
-  <script type="module">
-    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+  <script>
+    const DATA = {
+      label: "UR-11502 國土規劃相關資訊系統維運與擴充",
+      open: true,
+      children: [
+        {
+          label: "1 維運國土規劃相關資訊系統",
+          open: true,
+          children: [
+            {
+              label: "1-1 國土規劃入口網",
+              children: [
+                "期初設定帳號與權限",
+                { label: "整合國土計畫組相關系統", children: ["書圖上傳平台", "審議比對圖台", "使用地查詢系統", "隨時調整案件出圖系統", "全文檢索與管考系統", "原住民族土地調查平台", "土地使用管制與違規查報系統"] },
+                { label: "整合城鄉發展分署相關系統", children: ["圖資查詢及流通供應平台", "國土規劃地理資訊圖台", "都市計畫圖資上傳平台", "全國土地使用分區資料查詢系統", "公版都市計畫證明核發系統", "都計雲"] },
+                "期末配合入口網更新與美編設計"
+              ]
+            },
+            {
+              label: "1-2 資料整合串聯與介接方案",
+              children: ["盤點工項1-1及其他外部系統", { label: "依業務性質分類", children: ["規劃類", "審議類", "管制類", "其他適當分類"] }, "提出系統整併與資料庫整合構想", "提出介接處理方式與示意圖", "評估系統整併可能性"]
+            },
+            {
+              label: "1-3 城鄉發展分署系統維運",
+              children: [
+                "網頁活動訊息與下載檔維護",
+                "定期維護更新相關圖資",
+                { label: "圖資查詢及流通供應平台", children: ["匯入圖資分類成果", "洽機關提供或申請圖資介接服務", "一站式查詢與下載", "公務與民間圖資權限", "最新版圖資自動提供機制", "圖資收費功能與收費機制"] },
+                { label: "國土規劃地理資訊圖台", children: ["更新介面與右鍵屬性查詢", "介接3D圖資服務與建物人口資料", "API與WMTS供外界介接", "使用次數與網路使用量統計", "歷年圖資時間軸", "AI語意定位含語音", "使用率分析與模組簡化評估", "ArcGIS Server 12以上結合AI與LLM測試", "介接外部API與WMTS資料"] },
+                { label: "都市計畫圖資上傳事項", children: ["每2個月產製未上傳案件清冊", "期末研擬逾期180天案件解方", "辦理縣市政府圖資檔案介接", "評估低使用資料是否刪除", "提送修正後作業手冊初稿"] }
+              ]
+            }
+          ]
+        },
+        {
+          label: "2 維運國土計畫組相關資訊系統",
+          open: true,
+          children: [
+            "期初確認子系統與功能整合",
+            "維運或修正前先召開工作會議確認需求",
+            { label: "2-1 書圖上傳平台", children: ["協助縣市政府上傳法定書件", "列明無法上傳理由與建議處理", "維運上傳與檢核作業", "修正上傳作業手冊", "介接審議比對圖台與查詢系統", "介接通知書列印與出圖系統", "檢查使用地土地清冊空值與格式", "研議國土計畫與鄉村地區法定書件上傳介面"] },
+            { label: "2-2 國土功能分區圖審議比對圖台", children: ["提供功能諮詢與調整建議", "整合圖資查詢平台同步更新圖資", "新增檢核成果納入功能", "新增修正狀態判定功能", "新增參考圖資上傳功能", "分析鄉村地區規劃與階段性劃設差異", "修正樣態4零星土地功能", "更新樣態7劃設疑義詞庫", "單一比對整合多邊形選取編輯說明", "評估開放縣市政府與受託團隊使用"] },
+            { label: "2-3 國土功能分區及使用地查詢系統", children: ["更新容許使用項目", "與國土規劃相關資訊系統串接", "以圖台呈現計畫與分區歷程", "補充容許使用及申請同意或使用許可資訊"] },
+            { label: "2-4 國土功能分區通知書列印系統", children: ["系統管理維護營運與資安防護", "系統及資料庫備份還原", "新增案件列表檢視模式", "整合核判案件處理流程", "維運地籍圖檢視圖台", "編修使用手冊與名詞解釋", "建立定期追蹤機制", { label: "整合地籍圖資轉檔程式", children: ["地段清單匯入與勾稽", "統計報告與電子郵件通知", "異動地號清單匯入", "土地異動前後關係屬性", "每日每週資料更新至土地資料庫", "核判結果API回傳更新土地資料庫"] }] },
+            { label: "2-5 隨時調整案件出圖系統", children: ["納入最新版功能分區及分類參考圖資", "產製法定書圖格式電子檔", "產製調整前後差異統計圖表", "介接通知書列印系統同步更新核判結果"] },
+            { label: "2-6 國土計畫相關事項管考系統", children: ["納入國土計畫應辦事項", "納入審議會決議事項", "納入補助案件與辦理情形填報", "整合鄉村地區整體規劃圖層與進度管考", "介接國土計畫主題網站作為資料庫"] }
+          ]
+        },
+        { label: "3 教育訓練與系統教學手冊", open: true, children: ["研擬訓練構想與期程", "拍攝教學影片或建立FAQ", "訓練後依學員回饋修正系統", "本署同仁至少1場再加1場", "地方政府北中南東至少4場再加4場", "地政事務所與區公所至少10場再加10場", "南投縣與嘉義縣各1場公版證明核發系統訓練", "至少3場地理資訊圖台與全國土地使用分區系統訓練"] },
+        { label: "4 使用者回饋機制與無障礙標章", open: true, children: ["期初建立各系統使用者回饋機制", "回饋資訊列入月工作報告", "提出改善建議", "期末完成國土規劃入口網無障礙標章申請"] },
+        { label: "5 工作會議與技術支援", open: true, children: ["每月提供工作會議議程資料", "配合整理會議紀錄", "回應與追蹤處理情形", "協助國土管理署與城鄉發展分署技術諮詢支援"] },
+        { label: "6 資訊安全事項", open: true, children: ["依第3章第6節辦理資安需求", { label: "簽約次日起60天內繳交", children: ["資通系統防護基準表", "資通安全項目自評表", "資通安全維護計畫"] }, "ArcGIS Server漏洞情資蒐集與修補", "弱點掃描與滲透測試", "HTTPS與SSL TLS憑證管理", "日誌保存與異常通報", "備份與資料回復測試演練", "資安事件應處與修復"] },
+        { label: "7 報告書印製與電子檔", open: true, children: [{ label: "期初成果", children: ["115年9月30日", "書面成果報告15份", "電子檔含成果簡報1份"] }, { label: "期中成果", children: ["115年12月31日", "書面成果報告15份", "電子檔含成果簡報1份"] }, { label: "期末成果", children: ["116年3月31日", "書面成果報告15份", "電子檔含成果簡報1份"] }, { label: "總結報告書", children: ["期末審查通過發文日次日起14日曆天內", "系統需求規格書", "系統分析書", "系統設計規格書", "程式碼", "書面成果報告15份", "電子檔3份"] }] },
+        { label: "8 營運推廣配合辦理事項", open: true, children: ["期末辦理連江縣與新竹縣公版系統推廣說明會", "配合國家底圖分組推廣說明會", "簡介國土規劃相關資訊系統功能", "確保GSN東七機房與國網中心系統正常運作", "負責東七機房租借與維運費用", "配合地理資訊研討會展覽與成果發表", "期初規劃移機至國網中心與東七備援機房", "維持ArcGIS Server防毒與維運軟體訂閱"] },
+        { label: "契約補充", open: true, children: ["履約標的依徵求說明書第5章與履約期限辦理", { label: "分3期付款", children: ["期初審查核定後40%", "期中審查核定後30%", "期末驗收合格後30%"] }] }
+      ]
+    };
 
-    mermaid.initialize({
-      startOnLoad: true,
-      securityLevel: "strict",
-      theme: "base",
-      themeVariables: {
-        primaryColor: "#e9f5f6",
-        primaryTextColor: "#17202a",
-        primaryBorderColor: "#0b6b75",
-        lineColor: "#7c8a99",
-        secondaryColor: "#fff4ec",
-        tertiaryColor: "#f6f8fb",
-        fontFamily: "Noto Sans TC, Microsoft JhengHei, sans-serif"
-      }
-    });
-
+    const mindmap = document.querySelector("#mindmap");
     const canvas = document.querySelector("#canvas");
+    const status = document.querySelector("#status");
+    const searchInput = document.querySelector("#search");
+    const state = new Map();
+    let nodeId = 0;
     let scale = 1;
 
-    function setScale(nextScale) {
-      scale = Math.min(1.8, Math.max(0.45, nextScale));
-      canvas.style.transform = `scale(${scale})`;
-      canvas.style.marginBottom = `${canvas.offsetHeight * (scale - 1)}px`;
+    function normalizeNode(node) {
+      if (typeof node === "string") return { label: node, children: [] };
+      return { ...node, children: (node.children || []).map(normalizeNode) };
     }
 
-    document.querySelector("#zoomIn").addEventListener("click", () => setScale(scale + 0.1));
-    document.querySelector("#zoomOut").addEventListener("click", () => setScale(scale - 0.1));
-    document.querySelector("#resetZoom").addEventListener("click", () => setScale(1));
+    const tree = normalizeNode(DATA);
 
-    document.querySelector("#downloadSvg").addEventListener("click", () => {
-      const svg = document.querySelector(".mermaid svg");
-      if (!svg) return;
+    function initializeState(node, depth = 0) {
+      node.id = `node-${nodeId++}`;
+      const isOpen = node.open === true || depth <= 1;
+      state.set(node.id, isOpen);
+      node.children.forEach((child) => initializeState(child, depth + 1));
+    }
 
-      const blob = new Blob([svg.outerHTML], { type: "image/svg+xml;charset=utf-8" });
+    function renderNode(node, depth = 0) {
+      const row = document.createElement("div");
+      const hasChildren = node.children.length > 0;
+      const isOpen = state.get(node.id);
+      row.className = `node-row${hasChildren && !isOpen ? " collapsed" : ""}`;
+      row.dataset.id = node.id;
+
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = `node${hasChildren ? "" : " leaf"}`;
+      button.dataset.depth = String(depth);
+      button.dataset.label = node.label;
+      button.setAttribute("aria-expanded", hasChildren ? String(isOpen) : "false");
+      button.disabled = !hasChildren;
+
+      const toggle = document.createElement("span");
+      toggle.className = "toggle";
+      toggle.textContent = hasChildren ? (isOpen ? "−" : "+") : "•";
+      toggle.setAttribute("aria-hidden", "true");
+
+      const label = document.createElement("span");
+      label.className = "label";
+      label.textContent = node.label;
+
+      button.append(toggle, label);
+      if (hasChildren) {
+        button.addEventListener("click", () => {
+          state.set(node.id, !state.get(node.id));
+          render();
+        });
+      }
+
+      row.append(button);
+
+      if (hasChildren) {
+        const children = document.createElement("div");
+        children.className = "children";
+        children.style.setProperty("--columns", depth === 0 ? "2" : "1");
+        node.children.forEach((child) => children.append(renderNode(child, depth + 1)));
+        row.append(children);
+      }
+
+      return row;
+    }
+
+    function render() {
+      mindmap.replaceChildren(renderNode(tree));
+      applySearch(searchInput.value);
+    }
+
+    function walk(node, callback) {
+      callback(node);
+      node.children.forEach((child) => walk(child, callback));
+    }
+
+    function setAll(open) {
+      walk(tree, (node) => {
+        if (node.children.length > 0) state.set(node.id, open);
+      });
+      state.set(tree.id, true);
+      render();
+    }
+
+    function setScale(nextScale) {
+      scale = Math.min(1.8, Math.max(0.5, nextScale));
+      canvas.style.transform = `scale(${scale})`;
+      canvas.style.marginBottom = `${Math.max(0, canvas.offsetHeight * (scale - 1))}px`;
+    }
+
+    function applySearch(value) {
+      const query = value.trim().toLowerCase();
+      const nodes = [...document.querySelectorAll(".node")];
+      let matches = 0;
+      nodes.forEach((node) => {
+        const matched = query && node.dataset.label.toLowerCase().includes(query);
+        node.classList.toggle("highlight", Boolean(matched));
+        if (matched) matches += 1;
+      });
+
+      if (!query) {
+        status.textContent = "預設展開主要工項；點擊節點可逐層查看細節。";
+      } else {
+        status.textContent = `找到 ${matches} 個符合「${value.trim()}」的節點。若結果在收合分支中，請按「展開全部」。`;
+      }
+    }
+
+    function downloadJson() {
+      const blob = new Blob([JSON.stringify(DATA, null, 2)], { type: "application/json;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = "UR-11502-mindmap.svg";
+      link.download = "UR-11502-mindmap-data.json";
       document.body.append(link);
       link.click();
       link.remove();
       URL.revokeObjectURL(url);
-    });
+    }
+
+    initializeState(tree);
+    render();
+
+    document.querySelector("#expandAll").addEventListener("click", () => setAll(true));
+    document.querySelector("#collapseAll").addEventListener("click", () => setAll(false));
+    document.querySelector("#zoomIn").addEventListener("click", () => setScale(scale + 0.1));
+    document.querySelector("#zoomOut").addEventListener("click", () => setScale(scale - 0.1));
+    document.querySelector("#resetZoom").addEventListener("click", () => setScale(1));
+    document.querySelector("#downloadJson").addEventListener("click", downloadJson);
+    searchInput.addEventListener("input", (event) => applySearch(event.target.value));
   </script>
 </body>
 </html>
